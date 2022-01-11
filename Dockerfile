@@ -16,9 +16,9 @@ RUN rm 'crawl-300d-2M.vec.zip'
 RUN unzip ./data/medium-articles-with-content.zip -d ./data
 RUN rm ./data/medium-articles-with-content.zip
 
-RUN python3 -c "import nltk; nltk.download('omw-1.4'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')"
-RUN jupyter nbconvert --to notebook --execute notebooks/dataset_prep.ipynb
-RUN jupyter nbconvert --to notebook --execute notebooks/preprocess.ipynb
-RUN jupyter nbconvert --to notebook --execute notebooks/ml_part.ipynb
+RUN python3 -c "import nltk; nltk.download('omw-1.4'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger'); nltk.download('punkt');"
+RUN jupyter nbconvert --to notebook --execute dataset_prep.ipynb
+RUN jupyter nbconvert --to notebook --execute preprocess.ipynb
+RUN jupyter nbconvert --to notebook --execute ml_part.ipynb
 
 CMD [ "python3", "server.py" ]

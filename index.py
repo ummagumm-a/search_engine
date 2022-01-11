@@ -6,8 +6,9 @@ class Index():
         for doc_i in range(len(documents)):
             for word in documents[doc_i].split():
                 if not word in self.word_bank.keys():
-                    self.word_bank[word] = []
-                self.word_bank[word].append(doc_i)
+                    self.word_bank[word] = [doc_i]
+                if doc_i != self.word_bank[word][-1]:
+                    self.word_bank[word].append(doc_i)
 
     def documents_for_query(self, query: str):
         indices = []

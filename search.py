@@ -52,17 +52,21 @@ def score(query: str, document: Document):
 
     return score_with_encoded(query_tfidf, query_w2v, doc_tfidf, doc_w2v)
 
+# score of an encoded query and encoded document (in vector form so far)
 def score_with_vec(query_e, vec):
     shape = get_shape(query_e)
     doc_e = split_vec(vec, shape)
 
     return score_halved(query_e, doc_e)
 
+# calculate score as a weighted sum of cosine similarities between
+# title, subTitle and text vectors
 def score_halved(query_e, doc_e):
-    return (0.5 * cs(doc_e[0], query_e[0]) \
-          + 0.3 * cs(doc_e[1], query_e[1]) \
-          + 0.2 * cs(doc_e[2], query_e[2])) \
+    return (0.3 * cs(doc_e[0], query_e[0]) \
+          + 0.2 * cs(doc_e[1], query_e[1]) \
+          + 0.5 * cs(doc_e[2], query_e[2])) \
 
+# score as a weighted sum of scores in tfidf and w2v encodings
 def score_with_encoded(query_tfidf, query_w2v, doc_tfidf, doc_w2v):
     return 0.3 * score_halved(query_tfidf, doc_tfidf) \
          + 0.7 * score_halved(query_w2v, doc_w2v) \
@@ -86,8 +90,8 @@ def retrieve(query: str):
         
         # calculate similarities
         sims = pd.Series(
-            0.3 * sub_df_tfidf.apply(lambda x: score_halved(query_tfidf, x), axis=1) \
-            + 0.7 * sub_df_w2v.apply(lambda x: score_halved(query_w2v, x), axis=1),
+            0.3 * sub_df_tfidf.apply(lambda x: score_with_vec(query_tfidf, x), axis=1).to_numpy() \
+            + 0.7 * sub_df_w2v.apply(lambda x: score_with_vec(query_w2v, x), axis=1).to_numpy(),
             index=indices)
         print(4)
     

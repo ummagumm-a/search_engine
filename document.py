@@ -11,7 +11,7 @@ class Document:
     
     def format(self, query):
         # возвращает пару тайтл-текст, отформатированную под запрос
-        return [self.title, self.text + ' ...']
+        return [self.title, self.text[:500] + ' ...']
 
     def normalized(self):
         title = text_preprocess(self.title)

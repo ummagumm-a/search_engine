@@ -1,7 +1,7 @@
 import random
 from index import Index
 from document import Document
-from scipy.sparse import load_npz, csr_matrix
+from scipy.sparse import load_npz
 from preprocess_functions import text_preprocess
 
 from utils import *
@@ -77,29 +77,20 @@ def retrieve(query: str):
     if query == '':
         top = df.head(10)
     else:
-        print(0)
         indices = build_indices(query)
-        print(1)
 
         query_tfidf, query_w2v = encode_query(query)
-        print(2)
         # take a subset of documents
         sub_df_tfidf = pd.DataFrame(tfidf_df[indices].toarray())
         sub_df_w2v = w2v_df.iloc[indices, :]
-        print(3)
         
         # calculate similarities
         sims = pd.Series(
             0.3 * sub_df_tfidf.apply(lambda x: score_with_vec(query_tfidf, x), axis=1).to_numpy() \
             + 0.7 * sub_df_w2v.apply(lambda x: score_with_vec(query_w2v, x), axis=1).to_numpy(),
             index=indices)
-        print(4)
     
         top = sims.sort_values(ascending = False).head(10)
-        print(5)
-
-    print(type(top))
-    print(top)
 
     return df_to_docs(df.iloc[top.index, :])
 

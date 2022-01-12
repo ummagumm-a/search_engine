@@ -1,61 +1,49 @@
 import random
 from index import Index
 from document import Document
-from scipy.sparse import load_npz
-from scipy.spatial.distance import cosine
+from scipy.sparse import load_npz, csr_matrix
 from preprocess_functions import text_preprocess
 
 from utils import *
+from encoders import *
 
 import pandas as pd
 import numpy as np
 
+index = None
+df = None
+tfidf_df = None
+w2v_df = None
+
+def init_dfs():
+    global df, tfidf_df, w2v_df
+    df = pd.read_csv('data/medium.csv')
+    tfidf_df = load_npz('data/tfidf_df.npz')
+    w2v_df = pd.read_csv('data/w2v_df.csv')
+
 def build_index():
+    global index
     prep_df = pd.read_csv('data/prep_df.csv').applymap(str)
-    return Index(prep_df['text'].tolist())
-
-index = build_index()
-df = pd.read_csv('data/medium.csv')
-tfidf_df = load_npz('data/tfidf_df.npz')
-w2v_df = pd.read_csv('data/w2v_df.csv')
-
-def cs(x, y):
-    return 1 - cosine(x, y)
-    
-def encode_query(query: str):
-    return tfidf_encode_query(query), \
-           w2v_encode_query(query)
-
-def tfidf_encode_query(query: str):
-    return Document(query, query, query, 0).tfidf_encoded()
-
-def w2v_encode_query(query: str):
-    return Document(query, query, query, 0).w2v_encoded()
+    index = Index(prep_df['text'].tolist())
 
 # returns indices of documents which contain words of the query
 def build_indices(query: str):
-    indices = np.asarray([], dtype=int)
-    while True:
-        print('build_indices: ')
+    indices = index.documents_for_query(query)
+    # in case there are too few documents - shorten the query and try again
+    while len(indices) < 20 and len(query) > 0:
+        query = query.rsplit(' ', 1)[0]
         new = np.asarray(list(set(index.documents_for_query(query)).difference(indices)))
         indices = np.hstack([indices, new])
-        # in case there are too few documents - shorten the query and try again
-        if len(indices) < 20 and len(query) > 0:
-            query = query.rsplit(' ', 1)[0] 
-        else:
-            break
 
     # if still there are not enough documents - return random indices
-    if len(indices) < 20:
-        print('not enough')
+    if len(indices) < 100:
         others = list(set(df.index).difference(indices))
-        np.hstack([indices, np.random.choice(others, 20 - len(indices))])
-        
-    if len(indices) > 100:
-        print('too much')
+        np.hstack([indices, np.random.choice(others, 100 - len(indices))])
+    # if too many documents - pick top 100
+    elif len(indices) > 100:
         indices = df['recommends'][indices].sort_values(ascending=False).index[:100]
 
-    return np.sort(indices.astype(int))
+    return indices.astype(int)
 
 # how much a document corresponds to a query
 def score(query: str, document: Document):
@@ -72,39 +60,26 @@ def score_with_vec(query_e, vec):
 
 def score_halved(query_e, doc_e):
     return (0.5 * cs(doc_e[0], query_e[0]) \
-          + 0.1 * cs(doc_e[1], query_e[1]) \
-          + 0.4 * cs(doc_e[2], query_e[2])) \
+          + 0.3 * cs(doc_e[1], query_e[1]) \
+          + 0.2 * cs(doc_e[2], query_e[2])) \
 
 def score_with_encoded(query_tfidf, query_w2v, doc_tfidf, doc_w2v):
     return 0.3 * score_halved(query_tfidf, doc_tfidf) \
          + 0.7 * score_halved(query_w2v, doc_w2v) \
 
-# transform dataframe row into Document object
-def row_to_docs(row):
-    return Document(
-        row.title,
-        row.subTitle,
-        row.text,
-        row.recommends)
-
-# transform dataframe into a list of Documents
-def df_to_docs(df):
-    return df.apply(row_to_docs, axis=1).tolist()
-
 # retrieve documents corresponding to a query
 def retrieve(query: str):
     # indices of documents with words from query
     if query == '':
-        top = df.head(20)
+        top = df.head(10)
     else:
-        print(1)
+        print(0)
         indices = build_indices(query)
-        print(indices)
+        print(1)
 
-        print(2)
         query_tfidf, query_w2v = encode_query(query)
+        print(2)
         # take a subset of documents
-        print(2.5)
         sub_df_tfidf = pd.DataFrame(tfidf_df[indices].toarray())
         sub_df_w2v = w2v_df.iloc[indices, :]
         print(3)
@@ -116,10 +91,11 @@ def retrieve(query: str):
             index=indices)
         print(4)
     
-        top = sims.sort_values(ascending = False).head(20)
-        print('top:')
-        print(top.index)
+        top = sims.sort_values(ascending = False).head(10)
         print(5)
+
+    print(type(top))
+    print(top)
 
     return df_to_docs(df.iloc[top.index, :])
 

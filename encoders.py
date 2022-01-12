@@ -43,4 +43,3 @@ def text_to_vec(text):
         cum += vecs.get(word, zero)
         
     return cum / len(words)
-
